@@ -240,6 +240,13 @@
 </head>
 <body>
 
+<!-- Header Actions -->
+<div style="position: absolute; top: 24px; right: 24px;">
+    <a href="{{ url('/payment/history') }}" class="btn-sm btn-copy" style="text-decoration:none; display:inline-flex;">
+        📋 View History
+    </a>
+</div>
+
 <div class="card">
     <div class="logo-wrap">
         <div class="logo-icon">💸</div>

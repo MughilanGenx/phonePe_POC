@@ -7,6 +7,7 @@ use App\Models\Payment;
 use Illuminate\Http\Request;
 use App\Services\PhonePeService;
 use Illuminate\Support\Facades\Log;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PhonepeController extends Controller
 {
@@ -16,6 +17,23 @@ class PhonepeController extends Controller
     public function index()
     {
         return view('payment.checkout');
+    }
+
+    // Show Transaction History for Admin
+    public function history()
+    {
+        $payments = Payment::orderBy('created_at', 'desc')->get();
+        return view('payment.history', compact('payments'));
+    }
+
+    // Download Invoice PDF
+    public function downloadInvoice($merchantOrderId)
+    {
+        $payment = Payment::where('merchant_order_id', $merchantOrderId)->firstOrFail();
+        
+        $pdf = Pdf::loadView('payment.invoice', compact('payment'));
+        
+        return $pdf->download('Invoice_' . $merchantOrderId . '.pdf');
     }
 
     // Generate Shareable Payment Link (AJAX) — only saves to DB, no PhonePe call yet
@@ -104,12 +122,15 @@ class PhonepeController extends Controller
     // Handle PhonePe Redirect Callback (browser redirect after payment)
     public function callback(Request $request)
     {
+        Log::info('PhonePe Callback Reached', ['payload' => $request->all()]);
+
+        // PhonePe can send transactionId or merchantOrderId based on API version
         $merchantOrderId = $request->input('merchantOrderId')
-            ?? $request->input('transactionId');
+            ?? $request->input('transactionId')
+            ?? $request->input('providerReferenceId');
 
         if (!$merchantOrderId) {
-            return redirect()->route('payment.failed')
-                ->with('error', 'Invalid callback. Order ID missing.');
+            return redirect()->route('payment.failed', ['error' => 'Invalid callback. Order ID missing.']);
         }
 
         try {
@@ -117,29 +138,38 @@ class PhonepeController extends Controller
             $payment = Payment::where('merchant_order_id', $merchantOrderId)->first();
 
             if (!$payment) {
-                return redirect()->route('payment.failed')
-                    ->with('error', 'Order not found.');
+                return redirect()->route('payment.failed', ['error' => 'Order not found in database: ' . $merchantOrderId]);
             }
 
-            $state = $statusResponse['state'] ?? 'FAILED';
+            // In PhonePe v2, 'state' can be at root or nested under 'data'
+            $state = $statusResponse['state'] 
+                  ?? $statusResponse['data']['state'] 
+                  ?? 'FAILED';
+
+            // Extract transactionId properly 
+            $transactionId = $statusResponse['transactionId'] 
+                          ?? $statusResponse['data']['transactionId'] 
+                          ?? null;
 
             $payment->update([
                 'status'         => $state === 'COMPLETED' ? 'COMPLETED' : 'FAILED',
-                'transaction_id' => $statusResponse['transactionId'] ?? null,
+                'transaction_id' => $transactionId,
                 'response_data'  => $statusResponse,
             ]);
 
             if ($state === 'COMPLETED') {
-                return redirect()->route('payment.success')
+                return redirect()->route('payment.success', ['order' => $merchantOrderId])
                     ->with('payment', $payment);
             }
 
-            return redirect()->route('payment.failed')
-                ->with('error', 'Payment was not completed.');
+            return redirect()->route('payment.failed', [
+                'error' => 'Payment failed or is still pending. State: ' . $state
+            ]);
 
         } catch (\Exception $e) {
-            return redirect()->route('payment.failed')
-                ->with('error', 'Status check failed: ' . $e->getMessage());
+            return redirect()->route('payment.failed', [
+                'error' => 'Status check failed: ' . $e->getMessage()
+            ]);
         }
     }
 
@@ -195,14 +225,19 @@ class PhonepeController extends Controller
     }
 
     // Payment Success Page
-    public function success()
+    public function success(Request $request)
     {
-        return view('payment.success');
+        $payment = null;
+        if ($request->has('order')) {
+            $payment = Payment::where('merchant_order_id', $request->query('order'))->first();
+        }
+        return view('payment.success', compact('payment'));
     }
 
     // Payment Failed Page
-    public function failed()
+    public function failed(Request $request)
     {
+        // $error is automatically picked up via request('error') inside the Blade view
         return view('payment.failed');
     }
 }

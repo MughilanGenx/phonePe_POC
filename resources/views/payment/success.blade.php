@@ -95,33 +95,40 @@
     <h1>Payment Successful!</h1>
     <p class="subtitle">Your payment was processed successfully. Thank you!</p>
 
-    @if(session('payment'))
-        @php $p = session('payment'); @endphp
+    @if(isset($payment))
         <div class="detail-block">
             <div class="detail-row">
                 <span class="key">Name</span>
-                <span class="val">{{ $p->name }}</span>
+                <span class="val">{{ $payment->name }}</span>
             </div>
             <div class="detail-row">
                 <span class="key">Amount</span>
-                <span class="val" style="color:#10b981">₹{{ number_format($p->amount, 2) }}</span>
+                <span class="val" style="color:#10b981">₹{{ number_format($payment->amount, 2) }}</span>
             </div>
             <div class="detail-row">
                 <span class="key">Order ID</span>
-                <span class="val" style="font-size:12px; font-family:monospace">{{ $p->merchant_order_id }}</span>
+                <span class="val" style="font-size:12px; font-family:monospace">{{ $payment->merchant_order_id }}</span>
             </div>
-            @if($p->transaction_id)
+            @if($payment->transaction_id)
             <div class="detail-row">
                 <span class="key">Transaction ID</span>
-                <span class="val" style="font-size:12px; font-family:monospace">{{ $p->transaction_id }}</span>
+                <span class="val" style="font-size:12px; font-family:monospace">{{ $payment->transaction_id }}</span>
             </div>
             @endif
         </div>
+        <!-- Auto-trigger PDF download -->
+        <iframe src="{{ route('payment.invoice', $payment->merchant_order_id) }}" style="display:none;"></iframe>
+        <div style="display:flex; justify-content:center; gap: 12px; margin-top:20px;">
+            <a href="{{ url('/payment/checkout') }}" class="btn">← Back to Checkout</a>
+            
+            <a href="{{ route('payment.invoice', $payment->merchant_order_id) }}" class="btn" style="background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.3)); border: 1px solid var(--success); color: var(--success); box-shadow: none;">
+                📥 Download PDF
+            </a>
+        </div>
     @else
         <p class="subtitle" style="margin-bottom:32px">Your transaction has been recorded.</p>
+        <a href="{{ url('/payment/checkout') }}" class="btn">← Back to Checkout</a>
     @endif
-
-    <a href="{{ url('/payment/checkout') }}" class="btn">← Back to Checkout</a>
 </div>
 </body>
 </html>

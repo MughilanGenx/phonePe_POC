@@ -97,9 +97,9 @@
     <h1>Payment Failed</h1>
     <p class="subtitle">Something went wrong with your payment. Please try again.</p>
 
-    @if(session('error'))
+    @if(session('error') || request()->has('error'))
         <div class="error-box">
-            ⚠️ {{ session('error') }}
+            ⚠️ {{ session('error') ?? request('error') }}
         </div>
     @endif
 
