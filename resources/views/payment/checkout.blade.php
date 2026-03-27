@@ -236,12 +236,30 @@
         .toast.success { border-color: rgba(16,185,129,0.4); }
         .toast.danger  { border-color: rgba(239,68,68,0.4); }
         .toast-icon { font-size: 18px; }
+
+        /* Responsive Breakpoints */
+        @media (max-width: 600px) {
+            body { padding: 16px; align-items: flex-start; }
+            .card { padding: 32px 24px; border-radius: 20px; margin-top: 60px; }
+            h1 { font-size: 22px; }
+            .logo-wrap { margin-bottom: 24px; }
+            .header-actions { top: 16px !important; right: 16px !important; }
+            .btn-sm { font-size: 12px; padding: 8px 12px; }
+            .customer-pill { padding: 8px 12px; }
+        }
+
+        @media (max-width: 400px) {
+            .actions { flex-direction: column; }
+            .btn-sm { width: 100%; flex: none; }
+            .logo-icon { width: 36px; height: 36px; font-size: 16px; }
+            .logo-text { font-size: 18px; }
+        }
     </style>
 </head>
 <body>
 
 <!-- Header Actions -->
-<div style="position: absolute; top: 24px; right: 24px;">
+<div class="header-actions" style="position: absolute; top: 24px; right: 24px; z-index: 10;">
     <a href="{{ url('/payment/history') }}" class="btn-sm btn-copy" style="text-decoration:none; display:inline-flex;">
         📋 View History
     </a>

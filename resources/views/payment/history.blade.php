@@ -26,7 +26,7 @@
             padding: 40px 24px;
         }
         .container {
-            max-width: 1000px;
+            max-width: 1200px;
             margin: 0 auto;
         }
         .header {
@@ -84,6 +84,21 @@
         .empty-state {
             padding: 60px 20px; text-align: center; color: var(--muted);
         }
+
+        /* Responsive */
+        @media (max-width: 800px) {
+            body { padding: 24px 16px; }
+            .header { flex-direction: column; align-items: flex-start; gap: 20px; }
+            .header div { width: 100%; display: flex; flex-direction: column; gap: 10px; }
+            .btn-back { width: 100%; text-align: center; }
+            h1 { font-size: 20px; }
+        }
+
+        .table-responsive {
+            width: 100%;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
     </style>
 </head>
 <body>
@@ -108,7 +123,8 @@
     @endif
 
     <div class="card">
-        <table>
+        <div class="table-responsive">
+            <table>
             <thead>
                 <tr>
                     <th>Customer Name</th>
@@ -162,6 +178,7 @@
                 @endforelse
             </tbody>
         </table>
+        </div>
     </div>
 </div>
 </body>

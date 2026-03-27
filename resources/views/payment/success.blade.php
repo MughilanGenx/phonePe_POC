@@ -84,6 +84,18 @@
             box-shadow: 0 4px 20px rgba(124,58,237,0.4);
         }
         .btn:hover { transform: translateY(-1px); box-shadow: 0 6px 26px rgba(124,58,237,0.5); }
+
+        .btn-group { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            body { padding: 16px; }
+            .card { padding: 32px 20px; border-radius: 20px; }
+            h1 { font-size: 22px; }
+            .subtitle { font-size: 14px; margin-bottom: 24px; }
+            .btn-group { flex-direction: column; width: 100%; }
+            .btn { width: 100%; justify-content: center; }
+        }
     </style>
 </head>
 <body>
@@ -118,7 +130,7 @@
         </div>
         <!-- Auto-trigger PDF download -->
         <iframe src="{{ route('payment.invoice', $payment->merchant_order_id) }}" style="display:none;"></iframe>
-        <div style="display:flex; justify-content:center; gap: 12px; margin-top:20px;">
+        <div class="btn-group" style="margin-top:20px;">
             <a href="{{ url('/payment/checkout') }}" class="btn">← Back to Checkout</a>
             
             <a href="{{ route('payment.invoice', $payment->merchant_order_id) }}" class="btn" style="background: linear-gradient(135deg, rgba(16,185,129,0.2), rgba(16,185,129,0.3)); border: 1px solid var(--success); color: var(--success); box-shadow: none;">

@@ -243,10 +243,24 @@ class PhonepeController extends Controller
         }
 
         $payment = Payment::where('merchant_order_id', $merchantOrderId)->first();
-
+ 
         if (!$payment) {
-            Log::warning('PhonePe Webhook: Payment not found', ['merchantOrderId' => $merchantOrderId]);
-            return response()->json(['status' => 'error', 'message' => 'Payment not found'], 200);
+            // Transaction was likely initiated from the PhonePe Dashboard directly
+            // We create a new record so it shows up in our history
+            Log::info('PhonePe Webhook: Creating new record for external transaction', ['merchantOrderId' => $merchantOrderId]);
+            
+            $rawAmount = $payload['amount'] 
+                      ?? $payload['payload']['amount'] ?? 0
+                      ?? $payload['data']['amount'] ?? 0;
+
+            $payment = Payment::create([
+                'merchant_order_id' => $merchantOrderId,
+                'name'              => 'PhonePe Dashboard User',
+                'email'             => 'N/A',
+                'phone'             => 'N/A',
+                'amount'            => $rawAmount / 100, // Convert paise to rupees
+                'status'            => 'PENDING',
+            ]);
         }
 
         // Extract state and transaction ID robustly

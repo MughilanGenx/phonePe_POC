@@ -86,6 +86,16 @@
             color: var(--text);
         }
         .btn-ghost:hover { background: rgba(255,255,255,0.1); }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            body { padding: 16px; }
+            .card { padding: 32px 20px; border-radius: 20px; }
+            h1 { font-size: 22px; }
+            .subtitle { font-size: 14px; margin-bottom: 24px; }
+            .btn-group { flex-direction: column; width: 100%; }
+            .btn { width: 100%; justify-content: center; }
+        }
     </style>
 </head>
 <body>
