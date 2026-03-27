@@ -1,0 +1,314 @@
+{
+    "openapi": "3.0.0",
+    "info": {
+        "title": "PhonePe Payment API",
+        "description": "API for PhonePe Payment Integration",
+        "version": "1.0.0"
+    },
+    "servers": [
+        {
+            "url": "http://127.0.0.1:8000/",
+            "description": "API Server"
+        }
+    ],
+    "paths": {
+        "/payment": {
+            "get": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Display Payment Checkout Form",
+                "description": "Returns the payment checkout form view for collecting payment details",
+                "operationId": "17ab6f5a6a59762df8eaa94817471727",
+                "responses": {
+                    "200": {
+                        "description": "Checkout form displayed successfully"
+                    }
+                }
+            }
+        },
+        "/api/generate-payment-link": {
+            "post": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Generate Shareable Payment Link",
+                "description": "Generates a unique shareable payment link with PhonePe hosted checkout",
+                "operationId": "7379e61b621afd2907e3e27c35cbd7b8",
+                "requestBody": {
+                    "description": "Payment details to generate shareable link",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "phone",
+                                    "amount"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "description": "Customer name",
+                                        "type": "string",
+                                        "example": "John Doe"
+                                    },
+                                    "email": {
+                                        "description": "Customer email",
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john@example.com"
+                                    },
+                                    "phone": {
+                                        "description": "Customer phone (10 digits)",
+                                        "type": "string",
+                                        "pattern": "^\\d{10}$",
+                                        "example": "9876543210"
+                                    },
+                                    "amount": {
+                                        "description": "Payment amount in rupees",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 100.5
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "Payment link generated successfully",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "properties": {
+                                        "success": {
+                                            "type": "boolean",
+                                            "example": true
+                                        },
+                                        "message": {
+                                            "type": "string",
+                                            "example": "Payment link generated successfully"
+                                        },
+                                        "phonepe_link": {
+                                            "description": "PhonePe hosted checkout URL",
+                                            "type": "string",
+                                            "example": "https://api.phonepe.com/checkout/..."
+                                        },
+                                        "local_link": {
+                                            "description": "Local tracking link",
+                                            "type": "string",
+                                            "example": "http://127.0.0.1:8000/pay/ORD_ABC123"
+                                        },
+                                        "merchant_order_id": {
+                                            "type": "string",
+                                            "example": "ORD_ABC123"
+                                        },
+                                        "name": {
+                                            "type": "string",
+                                            "example": "John Doe"
+                                        },
+                                        "email": {
+                                            "type": "string",
+                                            "example": "john@example.com"
+                                        },
+                                        "phone": {
+                                            "type": "string",
+                                            "example": "9876543210"
+                                        },
+                                        "amount": {
+                                            "type": "number",
+                                            "format": "float",
+                                            "example": 100.5
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    },
+                    "500": {
+                        "description": "PhonePe API error"
+                    }
+                }
+            }
+        },
+        "/api/pay": {
+            "post": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Initiate PhonePe Payment",
+                "description": "Initiates a new PhonePe payment request with customer details and amount",
+                "operationId": "6413519f4e309a4346414f0a61a2a9b1",
+                "requestBody": {
+                    "description": "Payment details required to initiate payment",
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "email",
+                                    "phone",
+                                    "amount"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "description": "Customer name",
+                                        "type": "string",
+                                        "example": "John Doe"
+                                    },
+                                    "email": {
+                                        "description": "Customer email",
+                                        "type": "string",
+                                        "format": "email",
+                                        "example": "john@example.com"
+                                    },
+                                    "phone": {
+                                        "description": "Customer phone (10 digits)",
+                                        "type": "string",
+                                        "pattern": "^\\d{10}$",
+                                        "example": "9876543210"
+                                    },
+                                    "amount": {
+                                        "description": "Payment amount in rupees",
+                                        "type": "number",
+                                        "format": "float",
+                                        "example": 100.5
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "302": {
+                        "description": "Redirect to PhonePe checkout page"
+                    },
+                    "422": {
+                        "description": "Validation failed"
+                    }
+                }
+            }
+        },
+        "/pay/{merchantOrderId}": {
+            "get": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Process Shared Payment Link",
+                "description": "Processes payment when customer clicks on the shared payment link",
+                "operationId": "a0680b19c5ff2fd326e72da996ccf410",
+                "parameters": [
+                    {
+                        "name": "merchantOrderId",
+                        "in": "path",
+                        "description": "Merchant Order ID from shared link",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "example": "ORD_ABC123"
+                        }
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to PhonePe checkout page"
+                    },
+                    "404": {
+                        "description": "Payment not found"
+                    }
+                }
+            }
+        },
+        "/api/phonepe/callback": {
+            "get": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Handle PhonePe Payment Callback",
+                "description": "Processes the callback from PhonePe after payment completion/failure",
+                "operationId": "6f6ee8b6a6e5a944211b3751044c3f03",
+                "parameters": [
+                    {
+                        "name": "merchantOrderId",
+                        "in": "query",
+                        "description": "Merchant Order ID from PhonePe callback",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "transactionId",
+                        "in": "query",
+                        "description": "Transaction ID from PhonePe callback",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "302": {
+                        "description": "Redirect to success or failed page"
+                    }
+                }
+            }
+        },
+        "/api/payment/success": {
+            "get": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Payment Success Page",
+                "description": "Display payment success page after successful payment completion",
+                "operationId": "025c4f0a69f646f2b7757c9139e56e5f",
+                "responses": {
+                    "200": {
+                        "description": "Success page displayed"
+                    }
+                }
+            }
+        },
+        "/api/payment/failed": {
+            "get": {
+                "tags": [
+                    "Payments"
+                ],
+                "summary": "Payment Failed Page",
+                "description": "Display payment failure page after payment failure",
+                "operationId": "52c0ba5747eab12cb18ccd9457e0a068",
+                "responses": {
+                    "200": {
+                        "description": "Failed page displayed"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "bearerAuth": {
+                "type": "http",
+                "description": "Bearer token authorization",
+                "name": "Bearer",
+                "in": "header",
+                "scheme": "bearer"
+            }
+        }
+    },
+    "tags": [
+        {
+            "name": "Payments",
+            "description": "Payments"
+        }
+    ]
+}

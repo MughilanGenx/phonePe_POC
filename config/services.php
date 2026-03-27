@@ -35,4 +35,14 @@ return [
         ],
     ],
 
+    'phonepe' => [
+        'merchant_id' => env('PHONEPE_MERCHANT_ID', 'PGTESTPAYUAT'),
+        'salt_key' => env('PHONEPE_API_KEY', '099eb0cd-02cf-4e2a-8aca-3e6c6aff0399'),
+        'salt_index' => env('PHONEPE_SALT_INDEX', '1'),
+        'env' => env('PHONEPE_ENV', 'sandbox'), // sandbox or production
+        'base_url' => env('PHONEPE_ENV', 'sandbox') === 'production' 
+            ? 'https://api.phonepe.com/apis/hermes/pg/v1/pay' 
+            : 'https://api-preprod.phonepe.com/apis/pg-sandbox/pg/v1/pay',
+    ],
+
 ];
