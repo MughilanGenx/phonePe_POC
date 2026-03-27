@@ -166,26 +166,36 @@ class PhonepeController extends Controller
             $state = $statusResponse['state'] 
                   ?? $statusResponse['data']['state'] 
                   ?? $statusResponse['payload']['state']
-                  ?? 'FAILED';
+                  ?? 'PENDING'; // Default to PENDING if unknown
 
             $transactionId = $statusResponse['transactionId'] 
                            ?? $statusResponse['data']['transactionId'] 
                            ?? $statusResponse['payload']['transactionId']
                            ?? null;
 
+            // Normalize state (PhonePe uses COMPLETED, PENDING, FAILED)
+            $newStatus = $state; 
+            if ($state === 'SUCCESS') $newStatus = 'COMPLETED'; // Support standard legacy SUCCESS if returned
+
             $payment->update([
-                'status'         => $state === 'COMPLETED' ? 'COMPLETED' : 'FAILED',
+                'status'         => $newStatus,
                 'transaction_id' => $transactionId,
                 'response_data'  => $statusResponse,
             ]);
 
-            if ($state === 'COMPLETED') {
+            if ($newStatus === 'COMPLETED') {
                 return redirect()->route('payment.success', ['order' => $merchantOrderId])
                     ->with('payment', $payment);
             }
 
+            if ($newStatus === 'PENDING') {
+                return redirect()->route('payment.failed', [
+                    'error' => 'Payment is still PENDING. Please refresh the history page in a few moments.'
+                ]);
+            }
+
             return redirect()->route('payment.failed', [
-                'error' => 'Payment failed or is still pending. State: ' . $state
+                'error' => 'Payment failed. State: ' . $state
             ]);
 
         } catch (\Exception $e) {
@@ -250,8 +260,12 @@ class PhonepeController extends Controller
             ?? $payload['data']['transactionId'] ?? null
             ?? null;
 
+        // Normalize state
+        $newStatus = $state;
+        if ($state === 'SUCCESS') $newStatus = 'COMPLETED';
+
         $payment->update([
-            'status'         => $state === 'COMPLETED' ? 'COMPLETED' : 'FAILED',
+            'status'         => $newStatus,
             'transaction_id' => $transactionId,
             'response_data'  => $payload,
         ]);
@@ -288,8 +302,12 @@ class PhonepeController extends Controller
                                ?? null;
 
                 if ($state && $state !== $payment->status) {
+                    // Normalize state
+                    $newStatus = $state;
+                    if ($state === 'SUCCESS') $newStatus = 'COMPLETED';
+
                     $payment->update([
-                        'status'         => $state === 'COMPLETED' ? 'COMPLETED' : 'FAILED',
+                        'status'         => $newStatus,
                         'transaction_id' => $transactionId,
                         'response_data'  => $statusResponse,
                     ]);
