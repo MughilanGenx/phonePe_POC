@@ -122,15 +122,36 @@ class PhonepeController extends Controller
     // Handle PhonePe Redirect Callback (browser redirect after payment)
     public function callback(Request $request)
     {
-        Log::info('PhonePe Callback Reached', ['payload' => $request->all()]);
+        Log::info('PhonePe Callback Reached', [
+            'method'  => $request->method(),
+            'payload' => $request->all(),
+            'url'     => $request->fullUrl(),
+        ]);
 
-        // PhonePe can send transactionId or merchantOrderId based on API version
-        $merchantOrderId = $request->input('merchantOrderId')
-            ?? $request->input('transactionId')
-            ?? $request->input('providerReferenceId');
+        $payload = $request->all();
+
+        // PhonePe often sends the data base64 encoded inside a 'response' attribute in v2
+        if (isset($payload['response'])) {
+            $decodedJson = base64_decode($payload['response']);
+            $decodedArray = json_decode($decodedJson, true);
+            if (is_array($decodedArray)) {
+                $payload = $decodedArray;
+                Log::info('Decoded PhonePe Callback Payload', ['payload' => $payload]);
+            }
+        }
+
+        // Try to extract merchantOrderId from multiple possible locations
+        $merchantOrderId = $payload['merchantOrderId']
+            ?? $payload['payload']['merchantOrderId'] ?? null
+            ?? $payload['data']['merchantOrderId'] ?? null
+            ?? $payload['transactionId'] ?? null
+            ?? $payload['payload']['transactionId'] ?? null
+            ?? $request->input('merchantOrderId')
+            ?? $request->input('transactionId');
 
         if (!$merchantOrderId) {
-            return redirect()->route('payment.failed', ['error' => 'Invalid callback. Order ID missing.']);
+            // Check if it's in the URL itself if PhonePe didn't append it correctly
+            return redirect()->route('payment.failed', ['error' => 'Invalid callback. Order ID missing. Check logs for payload details.']);
         }
 
         try {
@@ -141,15 +162,16 @@ class PhonepeController extends Controller
                 return redirect()->route('payment.failed', ['error' => 'Order not found in database: ' . $merchantOrderId]);
             }
 
-            // In PhonePe v2, 'state' can be at root or nested under 'data'
+            // Extract state and transaction ID robustly
             $state = $statusResponse['state'] 
                   ?? $statusResponse['data']['state'] 
+                  ?? $statusResponse['payload']['state']
                   ?? 'FAILED';
 
-            // Extract transactionId properly 
             $transactionId = $statusResponse['transactionId'] 
-                          ?? $statusResponse['data']['transactionId'] 
-                          ?? null;
+                           ?? $statusResponse['data']['transactionId'] 
+                           ?? $statusResponse['payload']['transactionId']
+                           ?? null;
 
             $payment->update([
                 'status'         => $state === 'COMPLETED' ? 'COMPLETED' : 'FAILED',
@@ -183,30 +205,49 @@ class PhonepeController extends Controller
 
         $payload = $request->all();
 
-        // Extract merchant order ID from webhook payload
+        // PhonePe Webhooks send the data base64 encoded inside a 'response' attribute
+        if (isset($payload['response'])) {
+            $decodedJson = base64_decode($payload['response']);
+            $decodedArray = json_decode($decodedJson, true);
+            if (is_array($decodedArray)) {
+                $payload = $decodedArray;
+            }
+        }
+
+        // Handle PhonePe Dashboard "Test" Webhook Ping
+        if ((isset($payload['data']) && $payload['data'] === 'WEBHOOK_VALIDATION_SUCCESS') || 
+            (isset($payload['payload']) && is_string($payload['payload']) && $payload['payload'] === 'WEBHOOK_VALIDATION_SUCCESS')) {
+            Log::info('PhonePe Webhook Validation Ping Received');
+            return response()->json(['status' => 'success', 'message' => 'Validated']);
+        }
+
+        // Extract merchant order ID robustly from webhook payload
         $merchantOrderId = $payload['merchantOrderId']
-            ?? $payload['data']['merchantOrderId']
+            ?? $payload['payload']['merchantOrderId'] ?? null
+            ?? $payload['data']['merchantOrderId'] ?? null
             ?? null;
 
         if (!$merchantOrderId) {
-            Log::warning('PhonePe Webhook: Missing merchantOrderId');
-            return response()->json(['status' => 'error', 'message' => 'Missing merchantOrderId'], 400);
+            Log::warning('PhonePe Webhook: Missing merchantOrderId', ['payload' => $payload]);
+            return response()->json(['status' => 'error', 'message' => 'Missing merchantOrderId'], 200); // 200 to stop retry, but log error
         }
 
         $payment = Payment::where('merchant_order_id', $merchantOrderId)->first();
 
         if (!$payment) {
             Log::warning('PhonePe Webhook: Payment not found', ['merchantOrderId' => $merchantOrderId]);
-            return response()->json(['status' => 'error', 'message' => 'Payment not found'], 404);
+            return response()->json(['status' => 'error', 'message' => 'Payment not found'], 200);
         }
 
-        // Extract state from webhook payload
+        // Extract state and transaction ID robustly
         $state = $payload['state']
-            ?? $payload['data']['state']
+            ?? $payload['payload']['state'] ?? null
+            ?? $payload['data']['state'] ?? null
             ?? 'FAILED';
 
         $transactionId = $payload['transactionId']
-            ?? $payload['data']['transactionId']
+            ?? $payload['payload']['transactionId'] ?? null
+            ?? $payload['data']['transactionId'] ?? null
             ?? null;
 
         $payment->update([

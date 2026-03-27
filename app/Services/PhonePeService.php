@@ -84,7 +84,7 @@ class PhonePeService
                 'type'         => 'PG_CHECKOUT',
                 'message'      => 'Payment for Order ' . $data['merchant_order_id'],
                 'merchantUrls' => [
-                    'redirectUrl' => route('phonepe.callback'),
+                    'redirectUrl' => route('phonepe.callback', ['merchantOrderId' => $data['merchant_order_id']]),
                 ],
             ],
         ];
