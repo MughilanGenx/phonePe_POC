@@ -147,6 +147,6 @@ class PhonePeService
             throw new \Exception('PhonePe Status Check Failed: ' . $response->body());
         }
 
-        return $response->json();
+        return $response->json() ?? [];
     }
 }

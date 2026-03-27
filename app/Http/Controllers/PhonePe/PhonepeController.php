@@ -265,6 +265,44 @@ class PhonepeController extends Controller
         return response()->json(['status' => 'success'], 200);
     }
 
+    // Manually Refresh Statuses for PENDING payments
+    public function refreshStatuses()
+    {
+        // Get payments that are not yet marked as COMPLETED
+        $pendingPayments = Payment::where('status', '!=', 'COMPLETED')->get();
+        $updatedCount = 0;
+
+        foreach ($pendingPayments as $payment) {
+            try {
+                $statusResponse = $this->phonePe->checkStatus($payment->merchant_order_id);
+                
+                // Extract state and transaction ID robustly (same logic as callback)
+                $state = $statusResponse['state'] 
+                      ?? $statusResponse['data']['state'] 
+                      ?? $statusResponse['payload']['state']
+                      ?? null;
+
+                $transactionId = $statusResponse['transactionId'] 
+                               ?? $statusResponse['data']['transactionId'] 
+                               ?? $statusResponse['payload']['transactionId']
+                               ?? null;
+
+                if ($state && $state !== $payment->status) {
+                    $payment->update([
+                        'status'         => $state === 'COMPLETED' ? 'COMPLETED' : 'FAILED',
+                        'transaction_id' => $transactionId,
+                        'response_data'  => $statusResponse,
+                    ]);
+                    $updatedCount++;
+                }
+            } catch (\Exception $e) {
+                Log::error("Failed to refresh status for {$payment->merchant_order_id}: " . $e->getMessage());
+            }
+        }
+
+        return redirect()->back()->with('success', "Status synchronization complete. {$updatedCount} records updated.");
+    }
+
     // Payment Success Page
     public function success(Request $request)
     {

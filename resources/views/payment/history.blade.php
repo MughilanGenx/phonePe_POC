@@ -93,8 +93,19 @@
             <div class="logo-icon">📋</div>
             Transaction History
         </h1>
-        <a href="{{ url('/payment/checkout') }}" class="btn-back">← Back to Checkout</a>
+        <div style="display: flex; gap: 12px;">
+            <a href="{{ route('payment.refresh') }}" class="btn-back" style="background: var(--purple); border-color: var(--purple); color: #fff;">
+                🔄 Sync Statuses
+            </a>
+            <a href="{{ url('/payment/checkout') }}" class="btn-back">← Back to Checkout</a>
+        </div>
     </div>
+
+    @if(session('success'))
+        <div style="background: rgba(16,185,129,0.1); border: 1px solid var(--success); color: var(--success); padding: 12px 20px; border-radius: 12px; margin-bottom: 24px; font-size: 14px; font-weight: 500;">
+            ✅ {{ session('success') }}
+        </div>
+    @endif
 
     <div class="card">
         <table>

@@ -16,5 +16,8 @@ Route::get('/payment/history', [PhonepeController::class, 'history'])->name('pay
 // Download Invoice PDF
 Route::get('/payment/invoice/{merchantOrderId}', [PhonepeController::class, 'downloadInvoice'])->name('payment.invoice');
 
+// Manual Refresh Statuses
+Route::get('/payment/refresh', [PhonepeController::class, 'refreshStatuses'])->name('payment.refresh');
+
 // Shared payment link route
 Route::get('/pay/{merchantOrderId}', [PhonepeController::class, 'processSharedLink'])->name('process.shared.link');
