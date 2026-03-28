@@ -1,7 +1,7 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\PhonePe\PhonepeController;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
@@ -18,6 +18,9 @@ Route::get('/payment/invoice/{merchantOrderId}', [PhonepeController::class, 'dow
 
 // Manual Refresh Statuses
 Route::get('/payment/refresh', [PhonepeController::class, 'refreshStatuses'])->name('payment.refresh');
+
+// Import a PhonePe dashboard / payment-link order by Merchant Order ID
+Route::post('/payment/import-phonepe-order', [PhonepeController::class, 'importPhonePeOrder'])->name('payment.import.phonepe');
 
 // Shared payment link route
 Route::get('/pay/{merchantOrderId}', [PhonepeController::class, 'processSharedLink'])->name('process.shared.link');

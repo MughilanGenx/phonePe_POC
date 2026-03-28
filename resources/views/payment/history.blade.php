@@ -122,15 +122,55 @@
         </div>
     @endif
 
+    @if(session('error'))
+        <div style="background: rgba(239,68,68,0.1); border: 1px solid var(--error); color: var(--error); padding: 12px 20px; border-radius: 12px; margin-bottom: 24px; font-size: 14px; font-weight: 500;">
+            {{ session('error') }}
+        </div>
+    @endif
+
+    <div class="card" style="margin-bottom: 20px; padding: 20px 24px;">
+        <div style="font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 12px;">
+            Import from PhonePe (payment link / dashboard)
+        </div>
+        <p style="font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 14px;">
+            Use the <strong style="color: var(--text);">Merchant Order ID</strong> you set when creating the payment (or the ID shown as merchant reference in the transaction detail). The value that starts with <strong style="color: var(--text);">OMO</strong> in the list is usually PhonePe’s <em>internal</em> order id — the status API expects your <strong style="color: var(--text);">merchant</strong> order id instead. Open the transaction in the PhonePe dashboard and copy the correct field, then import here or click <strong>Sync Statuses</strong> for existing rows.
+        </p>
+        <form action="{{ route('payment.import.phonepe') }}" method="post" style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center;">
+            @csrf
+            <input type="text" name="merchant_order_id" value="{{ old('merchant_order_id') }}" required placeholder="Merchant order id (not always the OMO… reference)"
+                style="flex: 1; min-width: 220px; padding: 10px 14px; border-radius: 10px; border: 1px solid var(--border); background: rgba(0,0,0,0.25); color: var(--text); font-size: 14px;">
+            <button type="submit" style="padding: 10px 20px; border-radius: 10px; border: none; background: var(--purple); color: #fff; font-weight: 600; font-size: 14px; cursor: pointer;">
+                Import / refresh
+            </button>
+        </form>
+        <p style="font-size: 12px; color: var(--muted); margin-top: 12px; line-height: 1.5;">
+            CLI: <code style="background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 6px;">php artisan phonepe:sync-order YOUR_ORDER_ID</code>
+            &nbsp;·&nbsp; Webhook URL: <code style="background: rgba(0,0,0,0.3); padding: 2px 8px; border-radius: 6px;">{{ url('/api/phonepe/webhook') }}</code>
+        </p>
+        <div style="margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted); line-height: 1.65;">
+            <strong style="color: var(--text);">Automatic “all history” from PhonePe</strong><br>
+            The Checkout API only exposes <em>one order at a time</em> by Merchant Order ID — there is no single OAuth call that downloads the whole dashboard table like an export. In practice you combine:
+            <span style="display:block; margin-top:8px;">
+                (1) <strong style="color: var(--text);">Webhooks</strong> — register the URL above in PhonePe Developer Settings so new payments upsert automatically;<br>
+                (2) <strong style="color: var(--text);">CSV + import</strong> — export or copy Merchant Order IDs from the Business dashboard, save as <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">storage/app/phonepe_merchant_order_ids.csv</code>, then run
+                <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">php artisan phonepe:import-csv</code>;<br>
+                (3) <strong style="color: var(--text);">Refresh</strong> — <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">php artisan phonepe:sync-pending</code> or <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">phonepe:sync-all</code> after importing.<br>
+                (4) Optional scheduler: set <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">PHONEPE_SCHEDULE_SYNC_PENDING=true</code> in <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">.env</code> and run the OS cron / <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">php artisan schedule:work</code> so pending rows poll PhonePe every 15 minutes.
+            </span>
+        </div>
+    </div>
+
     <div class="card">
         <div class="table-responsive">
             <table>
             <thead>
                 <tr>
                     <th>Customer Name</th>
+                    <th>Source</th>
                     <th>Email</th>
                     <th>Phone</th>
-                    <th>Order ID</th>
+                    <th>Merchant order</th>
+                    <th>PhonePe ref</th>
                     <th>Amount</th>
                     <th>Status</th>
                     <th>Date</th>
@@ -141,10 +181,16 @@
                 @forelse($payments as $payment)
                 <tr>
                     <td style="font-weight: 500;">{{ $payment->name }}</td>
+                    <td style="font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em;">
+                        {{ $payment->source ?? 'app' }}
+                    </td>
                     <td style="color: var(--muted);">{{ $payment->email }}</td>
                     <td>{{ $payment->phone }}</td>
                     <td style="font-family: monospace; font-size: 13px; color: var(--purple-light);">
                         {{ $payment->merchant_order_id }}
+                    </td>
+                    <td style="font-family: monospace; font-size: 11px; color: var(--muted);">
+                        {{ $payment->phonepe_order_id ?? '—' }}
                     </td>
                     <td style="font-weight: 600;">₹{{ number_format($payment->amount, 2) }}</td>
                     <td>
@@ -156,19 +202,15 @@
                         {{ $payment->created_at->format('M d, Y') }}
                     </td>
                     <td>
-                        @if($payment->status === 'COMPLETED')
-                            <a href="{{ route('payment.invoice', $payment->merchant_order_id) }}" 
-                               style="display:inline-block; padding:6px 12px; background:var(--purple); color:#fff; border-radius:6px; text-decoration:none; font-size:12px; font-weight:600;">
-                                Download PDF
-                            </a>
-                        @else
-                            <span style="color:var(--muted); font-size:12px;">N/A</span>
-                        @endif
+                        <a href="{{ route('payment.invoice', $payment->merchant_order_id) }}"
+                           style="display:inline-block; padding:6px 12px; background:var(--purple); color:#fff; border-radius:6px; text-decoration:none; font-size:12px; font-weight:600;">
+                            {{ $payment->status === 'COMPLETED' ? 'Invoice PDF' : 'Receipt PDF' }}
+                        </a>
                     </td>
                 </tr>
                 @empty
                 <tr>
-                    <td colspan="8">
+                    <td colspan="10">
                         <div class="empty-state">
                             <div style="font-size: 32px; margin-bottom: 12px;">📭</div>
                             No transactions found yet.
